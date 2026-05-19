@@ -3,98 +3,78 @@
 ## About Project
 
 This project was created for Operating Systems Laboratory Work #4, "Working
-with Processes". The laboratory work focuses on practical process management in
-Linux using Python and low-level operating-system interfaces.
+with Processes". The laboratory work focuses on practical work with Linux
+processes using Python and low-level operating-system calls.
 
-The main educational goal of the lab is to understand how processes are created,
-how one program can be started inside another process, how a parent process can
-wait for child processes, and how process termination information is delivered
-back to the parent.
+The purpose of the lab is to understand how processes are created, how a new
+program is started inside an existing process, how a parent waits for child
+processes, how child termination is analyzed, and how simple information can be
+passed between parent and child processes.
 
-The laboratory assignment covers these process-related topics:
+The assignment covers these process-management topics:
 
 - creating a new process with `fork()`;
-- replacing the current process image with another program using functions from
-  the `exec()` family;
-- waiting for child processes with `wait()` and `waitpid()`;
-- reading and interpreting process termination status;
-- distinguishing normal exit, error exit, and signal termination;
-- passing data from a parent process to a child process through command-line
-  arguments;
-- passing data from a parent process to a child process through environment
-  variables;
-- returning a small result from a child process to the parent through the exit
-  code;
-- understanding zombie processes and why finished children must be reaped;
-- observing process state with shell commands such as `ps`;
+- replacing a process image with another program through the `exec()` family;
+- waiting for process completion with `wait()` and `waitpid()`;
+- collecting child processes so they do not remain as zombies;
+- checking whether a process exited normally or was killed by a signal;
+- passing data from parent to child through command-line arguments;
+- passing data from parent to child through environment variables;
+- returning a small numeric result from child to parent through the exit code;
+- observing child processes with commands such as `ps`;
 - terminating still-running processes with `kill`.
 
-The lab contains three tasks.
+The laboratory assignment contains three tasks.
 
-Task 1 asks to implement a custom function named `my_system()`. This function is
-a simplified analog of the standard C/Python `system()` behavior. It should run
-external shell commands by manually using process-control operations:
+Task 1 asks to implement a custom `my_system()` function. It is a simplified
+analog of the standard `system()` function. The function must run shell commands
+by explicitly creating a child process, executing a shell in that child, and
+waiting for the child from the parent:
 
-1. create a child process with `fork()`;
-2. in the child process, run `/bin/sh -c <command>` with `execve()`;
-3. in the parent process, wait for the child with `waitpid()`;
-4. return the raw wait status.
+1. parent calls `fork()`;
+2. child calls an `exec()`-family function;
+3. child becomes `/bin/sh -c <command>`;
+4. parent calls `waitpid()`;
+5. parent receives the raw termination status.
 
-The task specifically asks for a simplified implementation without full signal
-handling. This project follows that idea: `my_system()` is small and focused on
-demonstrating the process lifecycle.
+Task 2 asks to create a process-management demonstration. The program creates a
+chosen number of child processes. The number is an optional command-line
+argument, and the default is `10`. Every child generates a random number in the
+range `[0, 1)`. If the number is greater than or equal to `0.5`, the child exits
+successfully with code `0`. If the number is less than `0.5`, the child enters
+an infinite loop. The parent waits, reaps children that finished naturally,
+shows which children are still alive, then terminates and reaps the remaining
+children.
 
-Task 2 asks to create a program that starts a chosen number of child processes.
-The number of children is an optional command-line argument. If it is not
-provided, the default number is `10`.
+Task 3 asks to research simple parent-child communication. The assignment
+describes two programs:
 
-Each child process generates a pseudo-random floating-point number in the range
-`[0, 1)`. If the number is greater than or equal to `0.5`, the child exits
-normally with exit code `0`. If the number is less than `0.5`, the child enters
-an infinite loop. The parent process then:
+- Program 0 divides the interval `[0, 1]` into `n` equal sub-intervals, sets the
+  environment variable `NUM`, creates `n` children, starts Program 1 in each
+  child, waits for all children, and prints the result returned by every child.
+- Program 1 receives two interval bounds `a` and `b` through command-line
+  arguments, receives the number of trials through the `NUM` environment
+  variable, generates random values, counts how many fall into `[a, b]`, and
+  returns that count through its process exit code.
 
-1. creates all child processes;
-2. sleeps for 3 seconds;
-3. reaps children that already finished;
-4. prints which children are still running;
-5. sleeps for 5 more seconds;
-6. terminates the remaining children with `kill`;
-7. waits for the killed children;
-8. prints the reason why every child finished.
+The current repository implements Task 3 with two files:
 
-This task demonstrates a very important process-management rule: a parent must
-collect finished child processes. If it does not, finished children may stay in
-the process table as zombies until the parent exits or reaps them.
+- `src/task3.py` is Program 0, the parent/controller;
+- `src/prog1.py` is Program 1, the child worker.
 
-Task 3 explores a simple form of communication between a parent process and
-child processes. The lab describes a pair of programs:
+This structure follows the lab idea directly. `task3.py` creates child
+processes with `fork()`, each child replaces itself with `prog1.py` through
+`execve()`, and the parent collects the result from each child with
+`waitpid()` and `WEXITSTATUS`.
 
-- Program 0 divides the interval `[0, 1]` into equal parts, creates child
-  processes, gives each child one interval through command-line arguments, and
-  gives all children a trial count through the `NUM` environment variable.
-- Program 1 receives interval bounds `a` and `b` through command-line arguments,
-  receives `NUM` from the environment, generates random values, counts how many
-  values fall into `[a, b]`, and returns that count through its process exit
-  code.
-
-In this repository, `src/task3.py` implements the Program 1 side of that task.
-It reads interval bounds from `sys.argv`, reads `NUM` from `os.environ`,
-generates pseudo-random numbers, counts hits, and exits with the hit count. The
-implementation also protects against the 8-bit exit-code limitation by clamping
-the returned hit count to `255`.
-
-The project uses only Python standard library modules in the runtime code. It
-is intended to be run on Linux or a Unix-like system because it depends on
-process APIs such as `os.fork()`, `os.execve()`, `os.waitpid()`, and POSIX
-signals.
-
-The laboratory requirements also mention project organization, Git history, a
-README file, and `flake8` quality checking. This README explains the purpose of
-the project, the source files, and the behavior of each utility.
+The project uses only Python standard library modules. It is intended for Linux
+or a Unix-like system because it depends on POSIX process APIs such as
+`os.fork()`, `os.execve()`, `os.waitpid()`, and signal-based process
+termination.
 
 ## About Code
 
-The project contains three source files:
+The project currently contains four source files:
 
 ```text
 lab4_CS12_KhalinIhor/
@@ -102,22 +82,27 @@ lab4_CS12_KhalinIhor/
 `-- src/
     |-- task1.py
     |-- task2.py
-    `-- task3.py
+    |-- task3.py
+    `-- prog1.py
 ```
 
-There are no external runtime dependencies. The code uses these Python standard
-library modules:
+Runtime code uses only standard Python modules:
 
-- `os`: process creation, program execution, waiting, environment access,
-  process IDs, exit status helpers, file paths, and shell command execution
-  support;
-- `sys`: command-line arguments, stderr output, and exiting with a status code;
-- `time`: sleeping in parent and child processes;
+- `os`: process creation, program execution, waiting, environment handling,
+  process IDs, process-status helpers, and filesystem path construction;
+- `sys`: command-line arguments, stderr output, Python executable path, and
+  exiting with status codes;
+- `time`: sleeping in child loops and parent waiting phases;
 - `random`: generating pseudo-random floating-point values.
+
+There are no pytest files in the current project. The lab PDF says that pytest
+testing is not mandatory for this work and that manual testing is acceptable.
+The project can be checked with `flake8`.
 
 ### Source File: `src/task1.py`
 
-`src/task1.py` implements Task 1: a custom simplified `system()` analog.
+`src/task1.py` implements Task 1: a simplified custom replacement for
+`system()`.
 
 Main function:
 
@@ -131,46 +116,39 @@ Demo entry point:
 _main()
 ```
 
-The `my_system()` function accepts a shell command as a string. If the command
-is empty, it returns `0`. Otherwise, it creates a child process with
-`os.fork()`.
+`my_system()` receives a command string. If the string is empty, it returns `0`.
+Otherwise, it forks the current process.
 
-After `fork()`, the program has two execution paths:
+After `fork()`, there are two execution paths:
 
-- child process path, where `pid == 0`;
-- parent process path, where `pid` is the process ID of the child.
+- child process path: `pid == 0`;
+- parent process path: `pid` contains the child process ID.
 
-In the child process, the function calls:
+In the child process, the code runs:
 
 ```python
 os.execve("/bin/sh", ["/bin/sh", "-c", cmd], os.environ.copy())
 ```
 
-This replaces the child process image with `/bin/sh`. The shell receives `-c`
-and the command string, so it executes the command exactly as a shell command.
-The child also receives a copy of the current environment.
+This replaces the child Python process with `/bin/sh`. The shell receives the
+`-c` option and the command string. The child also receives a copy of the
+current environment.
 
-In the parent process, the function calls:
+In the parent process, the code runs:
 
 ```python
 _, status = os.waitpid(pid, 0)
 return status
 ```
 
-`waitpid(pid, 0)` blocks until the specific child process finishes. The returned
-`status` is the raw wait status, like the value returned by `os.system()`.
+The parent blocks until the specific child finishes. The returned value is the
+raw wait status, the same kind of status that `os.system()` returns.
 
-The raw wait status is not always the same as the exit code. The code converts
-it for display in demo mode with:
+The demo mode converts this raw status to a more familiar exit code:
 
 ```python
 os.waitstatus_to_exitcode(status)
 ```
-
-The `_main()` function provides two ways to demonstrate `my_system()`:
-
-- if one command-line argument is provided, it runs that command;
-- if no command is provided, it runs a built-in list of demo commands.
 
 Built-in demo commands:
 
@@ -181,7 +159,7 @@ ls -la
 nonexistentcommand123
 ```
 
-Examples:
+Usage examples:
 
 ```bash
 python3 src/task1.py
@@ -193,14 +171,18 @@ python3 src/task1.py "nonexistentcommand123"
 
 ### Source File: `src/task2.py`
 
-`src/task2.py` implements Task 2: child process creation, observation,
-termination, and cleanup.
+`src/task2.py` implements Task 2: creating, observing, terminating, and reaping
+child processes.
 
-Main constants and functions:
+Main constant:
 
 ```python
 DEFAULT_NUM_CHILDREN = 10
+```
 
+Main functions:
+
+```python
 get_num_children()
 report_exit(idx, wpid, status)
 create_children(num_children)
@@ -209,136 +191,122 @@ kill_and_reap(still_running)
 _main()
 ```
 
-The file imports `my_system()` from Task 1:
+The file imports the custom command runner from Task 1:
 
 ```python
 from task1 import my_system
 ```
 
-This connects Task 2 to Task 1. The parent process uses the custom shell-command
-runner to execute `ps` and `kill` commands.
+`get_num_children()` parses the optional command-line argument. It supports:
 
-`get_num_children()` reads the optional command-line argument. If no argument is
-provided, it returns `DEFAULT_NUM_CHILDREN`, which is `10`. If one argument is
-provided, the function tries to convert it to an integer and requires it to be a
-positive number. Invalid input prints an error and exits with code `1`.
+- no argument: use `10`;
+- one positive integer argument: use that value;
+- invalid value: print an error and exit with code `1`;
+- too many arguments: print usage and exit with code `1`.
 
-`create_children(num_children)` creates child processes in a loop. For each
-child, it calls `os.fork()`.
+`create_children(num_children)` creates children in a loop. For every child:
 
-In each child process:
+1. the parent calls `os.fork()`;
+2. the child generates a random number with `random.random()`;
+3. if the number is at least `0.5`, the child exits with `os._exit(0)`;
+4. if the number is below `0.5`, the child enters an infinite loop with
+   `time.sleep(1)`;
+5. the parent stores `(child_index, pid)` in a list.
 
-1. a random number is generated with `random.random()`;
-2. the child prints its index, process ID, and generated number;
-3. if the number is at least `0.5`, the child prints a success message and exits
-   with `os._exit(0)`;
-4. if the number is below `0.5`, the child enters an infinite loop and sleeps
-   repeatedly.
+The infinite loop is intentional. It creates children that remain alive until
+the parent kills them. This makes it possible to demonstrate process monitoring
+and signal termination.
 
-The infinite loop is intentional. It creates child processes that remain alive
-so the parent can later detect and terminate them.
-
-In the parent process, each child PID is stored as a tuple:
-
-```python
-(child_index, pid)
-```
-
-The returned list lets the parent know which child index belongs to which real
-process ID.
-
-`reap_finished(child_pids)` performs a non-blocking wait for every child:
+`reap_finished(child_pids)` checks all known children with non-blocking
+`waitpid()`:
 
 ```python
 wpid, status = os.waitpid(cpid, os.WNOHANG)
 ```
 
-`os.WNOHANG` means the parent does not block if the child is still running. If
-`waitpid()` returns `0`, the child has not finished yet. If it returns a child
-PID, that child has finished and can be reported.
+If `wpid == 0`, the child is still running. If `wpid` is a real PID, the child
+has finished and the parent can decode its status. The function returns a list
+of children that are still running.
 
-The function returns only the children that are still running.
-
-`report_exit(idx, wpid, status)` interprets the termination status:
-
-- `os.WIFEXITED(status)` checks whether the child exited normally;
-- `os.WEXITSTATUS(status)` extracts the normal exit code;
-- `os.WIFSIGNALED(status)` checks whether the child was terminated by a signal;
-- `os.WTERMSIG(status)` extracts the signal number.
-
-The printed message distinguishes:
+`report_exit(idx, wpid, status)` explains why a child finished:
 
 - normal exit with code `0`;
-- error exit with a nonzero code;
+- error exit with nonzero code;
 - termination by signal;
 - unknown termination status.
 
-`kill_and_reap(still_running)` handles children that did not finish naturally.
-For each still-running child, it builds a shell command:
+It uses POSIX status helpers:
 
 ```python
-kill <pid>
+os.WIFEXITED(status)
+os.WEXITSTATUS(status)
+os.WIFSIGNALED(status)
+os.WTERMSIG(status)
 ```
 
-Then it runs that command through `my_system()`. After sending termination
-signals, it calls `os.waitpid(cpid, 0)` for every remaining child. This final
-wait is blocking because the parent must collect each terminated child.
+`kill_and_reap(still_running)` sends `SIGTERM` to every still-running child by
+calling the external `kill` command through `my_system()`:
 
-The `_main()` function coordinates the whole demonstration:
+```python
+cmd = f"kill {cpid}"
+ret = my_system(cmd)
+```
+
+After sending termination signals, it waits for every child with blocking
+`waitpid()` and reports the termination reason.
+
+`_main()` coordinates the whole demonstration:
 
 1. parse child count;
-2. print the parent PID;
-3. run `ps` to show current child process state;
+2. print parent PID;
+3. run `ps --ppid <parent_pid>` before child creation;
 4. create children;
-5. sleep 3 seconds;
-6. reap children that finished naturally;
-7. print still-running children and show them with `ps`;
-8. sleep 5 seconds;
-9. kill and reap survivors;
-10. run `ps` again to show that no children remain.
+5. sleep for 3 seconds;
+6. reap children that already finished;
+7. print and show still-running children;
+8. sleep for 5 more seconds;
+9. terminate remaining children;
+10. reap all remaining children;
+11. run `ps` again to show that no children remain.
 
-Examples:
+Usage examples:
 
 ```bash
 python3 src/task2.py
 python3 src/task2.py 3
 python3 src/task2.py 10
-python3 src/task2.py 20
 ```
 
-### Source File: `src/task3.py`
+### Source File: `src/prog1.py`
 
-`src/task3.py` implements the Program 1 side of Task 3: counting random values
-that fall into a specified interval and returning the count through the process
-exit code.
+`src/prog1.py` implements Program 1 from Task 3. It is the child-side worker
+that performs one random interval experiment.
 
-Main constants and functions:
+Main constants:
 
 ```python
 DEFAULT_NUM = 500
 MAX_EXIT_CODE = 255
+```
 
+Main functions:
+
+```python
 get_num()
 get_interval()
 count_hits(a, b, num)
 _main()
 ```
 
-`DEFAULT_NUM` is the default number of random trials when the `NUM` environment
-variable is not set.
-
-`MAX_EXIT_CODE` is `255` because only 8 bits are available for the meaningful
-exit-code value returned from a child process.
-
-`get_num()` reads the environment variable:
+`get_num()` reads the `NUM` environment variable:
 
 ```python
-os.environ.get("NUM", str(DEFAULT_NUM))
+num_str = os.environ.get("NUM", str(DEFAULT_NUM))
 ```
 
-If `NUM` is missing, the function uses `"500"`. The value is converted to an
-integer and must be positive. If it is invalid, the program prints an error to
-stderr and exits with code `1`.
+If `NUM` is missing, the default value is `500`. If it is present, it must be a
+positive integer. Invalid values produce an error on stderr and exit with code
+`1`.
 
 `get_interval()` reads exactly two command-line arguments:
 
@@ -346,523 +314,468 @@ stderr and exits with code `1`.
 a b
 ```
 
-Both must be floating-point numbers. The implementation accepts intervals that
-satisfy:
+Both values must be floats. The implementation accepts:
 
 ```text
 0 <= a < b <= 1
 ```
 
-The lab text describes the stricter mathematical condition `0 < a < b < 1`,
-while this implementation also allows the endpoints `0` and `1`. This is useful
-when the full `[0, 1]` range is divided into adjacent pieces.
+The lab text describes `0 < a < b < 1`, but this implementation also allows
+`0` and `1` so Program 0 can divide the full `[0, 1]` interval into equal
+sub-intervals including the endpoints.
 
-`count_hits(a, b, num)` performs the experiment:
+`count_hits(a, b, num)` generates `num` random values with `random.random()`.
+It counts values that satisfy:
 
-1. generate `num` random values with `random.random()`;
-2. count values where `a <= value <= b`;
-3. return the count;
-4. clamp the count to `255`.
-
-The clamping is important because process exit codes cannot reliably return
-large integers. If the hit count is greater than `255`, the returned exit code
-would lose information. This implementation avoids wraparound by returning at
-most `255`.
-
-The `_main()` function:
-
-1. reads interval bounds from command-line arguments;
-2. reads the number of trials from the environment;
-3. prints process information;
-4. runs the random experiment;
-5. prints the hit count;
-6. exits with the hit count.
-
-Examples:
-
-```bash
-python3 src/task3.py 0.0 0.5
-python3 src/task3.py 0.25 0.75
-NUM=100 python3 src/task3.py 0.0 0.1
-NUM=1000 python3 src/task3.py 0.5 1.0
+```python
+a <= random_value <= b
 ```
 
-Because the result is returned through the exit code, the shell can inspect it:
+The result is clamped:
+
+```python
+return min(hits, MAX_EXIT_CODE)
+```
+
+This is necessary because process exit codes carry only an 8-bit result value.
+The maximum safe value is `255`.
+
+`_main()` reads input, prints process information, runs the experiment, prints
+the hit count, and exits with that count:
+
+```python
+sys.exit(hits)
+```
+
+Usage examples:
 
 ```bash
-NUM=100 python3 src/task3.py 0.0 0.5
+python3 src/prog1.py 0.0 0.5
+NUM=100 python3 src/prog1.py 0.25 0.75
+NUM=1000 python3 src/prog1.py 0.5 1.0
 echo $?
 ```
 
-The printed value from `echo $?` is the child process exit code, clamped to the
-range `0..255`.
+The shell command `echo $?` prints the exit code of the previous command.
+
+### Source File: `src/task3.py`
+
+`src/task3.py` implements Program 0 from Task 3. It is the parent/controller
+that starts one `prog1.py` child per interval and collects all child results.
+
+Main constant:
+
+```python
+PROG1 = os.path.join(os.path.dirname(os.path.abspath(__file__)), "prog1.py")
+```
+
+This builds an absolute path to `prog1.py` in the same directory as `task3.py`.
+That makes execution independent from the current working directory.
+
+Main functions:
+
+```python
+parse_args()
+build_intervals(n)
+launch_children(intervals, env)
+wait_and_collect(child_pids, num)
+_main()
+```
+
+`parse_args()` expects exactly two command-line arguments:
+
+```text
+n num
+```
+
+`n` is the number of equal sub-intervals of `[0, 1]`. `num` is the number of
+random trials per interval. Both must be positive integers.
+
+Usage:
+
+```bash
+python3 src/task3.py 5 100
+```
+
+`build_intervals(n)` splits `[0, 1]` into `n` equal sub-intervals:
+
+```python
+return [(i / n, (i + 1) / n) for i in range(n)]
+```
+
+Example for `n = 4`:
+
+```text
+[0.0, 0.25]
+[0.25, 0.5]
+[0.5, 0.75]
+[0.75, 1.0]
+```
+
+`_main()` prepares the child environment:
+
+```python
+env = os.environ.copy()
+env["NUM"] = str(num)
+```
+
+This is how Program 0 passes the number of trials to every Program 1 child.
+
+`launch_children(intervals, env)` creates one child per interval. In every
+iteration:
+
+1. parent calls `os.fork()`;
+2. child builds an argument vector for `prog1.py`;
+3. child calls `os.execve()`;
+4. parent stores `(interval_index, a, b, pid)`.
+
+The child-side exec call is:
+
+```python
+args = [sys.executable, PROG1, str(a), str(b)]
+os.execve(sys.executable, args, env)
+```
+
+This means the child process image is replaced by the current Python
+interpreter running `prog1.py` with interval bounds as command-line arguments.
+The prepared environment contains `NUM`.
+
+`wait_and_collect(child_pids, num)` waits for every child:
+
+```python
+wpid, status = os.waitpid(cpid, 0)
+```
+
+This is a blocking wait. The parent must collect every child.
+
+If the child exited normally, the parent extracts the hit count:
+
+```python
+hits = os.WEXITSTATUS(status)
+```
+
+It also calculates the expected number of hits for a uniform generator:
+
+```python
+expected = (b - a) * num
+```
+
+Then it prints a result line for the interval:
+
+```text
+Interval 1 [0.0000, 0.2500]:  24 hit(s) out of 100 (expected ~25.0)
+```
+
+If a child was killed by a signal, the parent reports the signal number with
+`os.WTERMSIG(status)`. If the termination status is unusual, it prints the raw
+status.
+
+Usage examples:
+
+```bash
+python3 src/task3.py 2 50
+python3 src/task3.py 5 100
+python3 src/task3.py 10 200
+```
 
 ## How Code Works Detailed
 
-### Task 1 Detailed Flow: Custom `my_system()`
+### Task 1 Detailed Flow: `my_system()`
 
-The first task demonstrates how a shell command can be launched manually without
-directly calling `os.system()`.
-
-The function signature is:
+The function starts with:
 
 ```python
 def my_system(cmd=""):
 ```
 
-The argument `cmd` is the shell command to run. The default is an empty string.
-
-The first check handles an empty command:
+The argument is a shell command string. If it is empty, the function returns
+success immediately:
 
 ```python
 if not cmd:
     return 0
 ```
 
-This keeps the function simple and predictable. If there is nothing to execute,
-the function reports success with `0`.
-
-The next step is process creation:
+Then the function creates a child:
 
 ```python
-try:
-    pid = os.fork()
-except OSError as e:
-    print(f"ERROR: fork() failed: {e}")
-    return -1
+pid = os.fork()
 ```
 
-`os.fork()` creates a new process. After a successful fork, both parent and
-child continue executing the same Python code, but `fork()` returns different
-values:
+After this call, two processes continue from the same line of code. The child
+gets `pid == 0`; the parent gets the real PID of the child.
 
-- in the child process, it returns `0`;
-- in the parent process, it returns the child's process ID.
-
-If `fork()` fails, the function prints an error and returns `-1`.
-
-The child branch is:
+The child branch replaces itself with a shell:
 
 ```python
-if pid == 0:
-    try:
-        os.execve("/bin/sh", ["/bin/sh", "-c", cmd], os.environ.copy())
-    except OSError as e:
-        print(f"ERROR: execve() failed: {e}")
-        os._exit(127)
+os.execve("/bin/sh", ["/bin/sh", "-c", cmd], os.environ.copy())
 ```
 
-The child calls `execve()`. This is a major process concept: `execve()` does not
-create a new process. Instead, it replaces the current process image with a new
-program. After a successful `execve()`, the Python child process becomes
-`/bin/sh`.
+This is the key idea of `execve()`: it does not create another process. It
+loads a new program into the current process. If the call succeeds, the child is
+no longer running Python code; it is running `/bin/sh`.
 
-The argument list:
+The parent branch waits:
 
 ```python
-["/bin/sh", "-c", cmd]
+_, status = os.waitpid(pid, 0)
 ```
 
-means:
+The `0` flag means a blocking wait. The parent continues only after the child
+finishes. The raw status is returned so the caller can inspect it.
 
-- run `/bin/sh`;
-- tell the shell to execute a command string with `-c`;
-- use `cmd` as that command string.
-
-The environment is passed as:
-
-```python
-os.environ.copy()
-```
-
-This gives the child a copy of the current process environment.
-
-If `execve()` fails, the child exits with:
+If `execve()` fails inside the child, the child exits with `127`, a common shell
+convention for command execution failure:
 
 ```python
 os._exit(127)
 ```
 
-`os._exit()` is used instead of `sys.exit()` in a child created by `fork()`.
-`os._exit()` terminates immediately without running Python cleanup handlers that
-belong to the parent process.
+`os._exit()` is used because the child was created by `fork()`. It exits
+immediately without running parent-side Python cleanup code.
 
-The parent branch is:
+### Task 2 Detailed Flow: Child Lifecycle Demonstration
 
-```python
-else:
-    _, status = os.waitpid(pid, 0)
-    return status
-```
-
-The parent waits for the exact child process. The second argument `0` means a
-blocking wait. The parent will not continue until the child terminates.
-
-The returned `status` is a packed wait status. It contains information about
-whether the child exited normally, what exit code it used, or whether it was
-terminated by a signal.
-
-Example:
-
-```bash
-python3 src/task1.py "echo hello"
-```
-
-Expected behavior:
-
-1. parent forks;
-2. child becomes `/bin/sh -c "echo hello"`;
-3. shell prints `hello`;
-4. shell exits;
-5. parent waits;
-6. parent prints raw status and converted exit code.
-
-### Task 2 Detailed Flow: Creating And Reaping Children
-
-Task 2 demonstrates a parent process managing several child processes.
-
-The program starts by reading the number of children:
+The Task 2 program begins by deciding how many children to create.
 
 ```python
 num_children = get_num_children()
 ```
 
-`get_num_children()` supports these cases:
+Valid command forms:
 
-| Command | Result |
+| Command | Behavior |
 | --- | --- |
-| `python3 src/task2.py` | use default `10` |
-| `python3 src/task2.py 5` | create `5` children |
-| `python3 src/task2.py 0` | error, not positive |
-| `python3 src/task2.py abc` | error, not an integer |
-| `python3 src/task2.py 1 2` | error, too many arguments |
+| `python3 src/task2.py` | create 10 children |
+| `python3 src/task2.py 4` | create 4 children |
+| `python3 src/task2.py 0` | print error and exit |
+| `python3 src/task2.py abc` | print error and exit |
 
-Then the parent prints its own PID:
-
-```python
-print(f"Parent PID={os.getpid()}")
-```
-
-The PID is useful because later `ps --ppid <parent_pid>` can show child
-processes that belong to this parent.
-
-The program runs:
+The parent prints its PID and runs `ps` through `my_system()`:
 
 ```python
 my_system(f"ps --ppid {os.getpid()} --no-headers 2>/dev/null "
           f"|| echo '  (no children yet)'")
 ```
 
-This command shows child processes of the current parent before new children
-are created.
+This shows whether the parent currently has child processes.
 
-Child creation happens in:
+Children are created by:
 
 ```python
 child_pids = create_children(num_children)
 ```
 
-Inside `create_children()`, the parent loops from `0` to `num_children - 1`.
-Each iteration calls `os.fork()`.
-
-In the child branch, a random number is generated:
+Each child executes this random decision:
 
 ```python
 num = random.random()
-```
-
-`random.random()` returns a float in `[0, 1)`.
-
-If the number is at least `0.5`, the child exits normally:
-
-```python
 if num >= 0.5:
     os._exit(0)
+else:
+    while True:
+        time.sleep(1)
 ```
 
-This creates a finished child that the parent must later reap.
+Successful children become finished processes. Looping children stay alive.
 
-If the number is below `0.5`, the child enters an infinite loop:
-
-```python
-while True:
-    time.sleep(1)
-```
-
-The child sleeps inside the loop to avoid consuming CPU aggressively. It remains
-alive until the parent sends it a termination signal.
-
-The parent branch stores each child:
-
-```python
-child_pids.append((i + 1, pid))
-```
-
-The index is human-friendly, starting from `1`. The PID is the real operating
-system process ID.
-
-After all children are created, the parent sleeps:
+The parent sleeps for 3 seconds:
 
 ```python
 time.sleep(3)
 ```
 
-This gives children time either to finish normally or stay alive in their loops.
-
-Then the parent reaps finished children:
-
-```python
-still_running = reap_finished(child_pids)
-```
-
-`reap_finished()` uses:
+Then it performs a non-blocking reap:
 
 ```python
 wpid, status = os.waitpid(cpid, os.WNOHANG)
 ```
 
-The `os.WNOHANG` flag is important. It means:
+`os.WNOHANG` prevents the parent from getting stuck waiting for children that
+are still in infinite loops.
 
-- if the child already finished, return its PID and status;
-- if the child is still running, return `0` immediately;
-- do not block the parent.
+Finished children are reported with `report_exit()`. Still-running children are
+stored in a new list.
 
-If a child finished, the program calls:
-
-```python
-report_exit(idx, wpid, status)
-```
-
-`report_exit()` decodes the status.
-
-Normal successful exit:
-
-```python
-os.WIFEXITED(status)
-os.WEXITSTATUS(status) == 0
-```
-
-Error exit:
-
-```python
-os.WIFEXITED(status)
-os.WEXITSTATUS(status) != 0
-```
-
-Signal termination:
-
-```python
-os.WIFSIGNALED(status)
-os.WTERMSIG(status)
-```
-
-If children are still running, the parent prints their PIDs and runs `ps` again:
-
-```python
-my_system(f"ps --ppid {os.getpid()} --no-headers 2>/dev/null")
-```
-
-Then the parent sleeps five more seconds:
-
-```python
-time.sleep(5)
-```
-
-After that, remaining children are terminated:
-
-```python
-kill_and_reap(still_running)
-```
-
-For each still-running child, `kill_and_reap()` builds:
-
-```python
-cmd = f"kill {cpid}"
-```
-
-and runs it through:
-
-```python
-ret = my_system(cmd)
-```
-
-The normal `kill` command sends `SIGTERM` by default. If `kill` fails, the code
-prints a warning with the converted exit code.
-
-After sending termination signals, the parent waits for every survivor:
-
-```python
-wpid, status = os.waitpid(cpid, 0)
-report_exit(idx, wpid, status)
-```
-
-This time the wait is blocking. The parent must fully collect every child before
-the program ends.
-
-The final `ps` command checks whether child processes remain:
-
-```python
-my_system(f"ps --ppid {os.getpid()} --no-headers 2>/dev/null "
-          f"|| echo '  (no children remaining)'")
-```
-
-This completes the process lifecycle demonstration:
-
-```text
-fork -> child runs -> parent waits -> parent reports -> parent kills survivors
--> parent waits again -> all children are reaped
-```
-
-### Task 3 Detailed Flow: Returning Data Through Exit Codes
-
-Task 3 demonstrates a very simple communication path:
-
-```text
-parent -> child: command-line arguments and environment variables
-child -> parent: process exit code
-```
-
-In this repository, `task3.py` is the child-side program.
-
-The program expects two command-line arguments:
+For each still-running child, the parent later sends:
 
 ```bash
-python3 src/task3.py a b
+kill <pid>
 ```
 
-For example:
+through:
+
+```python
+my_system(cmd)
+```
+
+After sending signals, the parent performs blocking waits for those children.
+This removes them from the process table and allows the program to report that
+they were terminated by a signal.
+
+This task demonstrates the complete lifecycle:
+
+```text
+fork -> child work -> normal exit or infinite loop -> parent non-blocking wait
+-> parent kills survivors -> parent blocking wait -> all children reaped
+```
+
+### Task 3 Detailed Flow: Program 0 And Program 1 Communication
+
+Task 3 is split into two files because the lab describes two separate programs.
+
+Program 0 is `task3.py`. It receives:
+
+```text
+n num
+```
+
+Example:
 
 ```bash
-python3 src/task3.py 0.2 0.4
+python3 src/task3.py 4 100
 ```
 
-The interval is read by:
+Here:
+
+- `n = 4`, so `[0, 1]` is split into four intervals;
+- `num = 100`, so every child performs 100 random trials.
+
+First, `task3.py` parses and validates the arguments:
+
+```python
+n = int(sys.argv[1])
+num = int(sys.argv[2])
+```
+
+Both values must be positive integers.
+
+Then it builds intervals:
+
+```python
+intervals = build_intervals(n)
+```
+
+For `n = 4`, the intervals are:
+
+```text
+[0.0, 0.25]
+[0.25, 0.5]
+[0.5, 0.75]
+[0.75, 1.0]
+```
+
+Then it prepares the environment:
+
+```python
+env = os.environ.copy()
+env["NUM"] = str(num)
+```
+
+This is the parent-to-child environment transfer. Every child receives the same
+`NUM` value.
+
+The parent launches children:
+
+```python
+child_pids = launch_children(intervals, env)
+```
+
+Inside each child:
+
+```python
+args = [sys.executable, PROG1, str(a), str(b)]
+os.execve(sys.executable, args, env)
+```
+
+This replaces the child with:
+
+```bash
+python3 prog1.py a b
+```
+
+with `NUM` present in the child environment.
+
+Program 1 is `prog1.py`. It reads:
 
 ```python
 a = float(sys.argv[1])
 b = float(sys.argv[2])
+num = int(os.environ.get("NUM", "500"))
 ```
 
-The argument count is checked first:
-
-```python
-if len(sys.argv) != 3:
-    print(
-        f"ERROR: expected 2 arguments (a b), "
-        f"got {len(sys.argv) - 1}",
-        file=sys.stderr,
-    )
-    sys.exit(1)
-```
-
-If the user passes too few or too many arguments, the program exits with code
-`1`.
-
-If arguments cannot be converted to floats, the program also exits with code
-`1`.
-
-After conversion, the interval is validated:
-
-```python
-if not (0 <= a < b <= 1):
-    print(
-        f"ERROR: arguments must satisfy 0 <= a < b <= 1, "
-        f"got a={a}, b={b}",
-        file=sys.stderr,
-    )
-    sys.exit(1)
-```
-
-The number of random trials comes from the environment:
-
-```python
-num_str = os.environ.get("NUM", str(DEFAULT_NUM))
-```
-
-Examples:
-
-```bash
-python3 src/task3.py 0.0 0.5
-NUM=100 python3 src/task3.py 0.0 0.5
-```
-
-If `NUM` is missing, the program uses `500`. If `NUM` is present, it must be a
-positive integer.
-
-The experiment is performed by:
+Then it generates random values and counts hits:
 
 ```python
 hits = sum(1 for _ in range(num) if a <= random.random() <= b)
 ```
 
-This line generates `num` pseudo-random values. For each value, it checks
-whether it belongs to the closed interval `[a, b]`. Every successful check adds
-one hit.
-
-Then the return value is clamped:
+The count is clamped to `255`:
 
 ```python
 return min(hits, MAX_EXIT_CODE)
 ```
 
-This matters because exit codes are limited. Even though Python integers can be
-large, only the low 8 bits are normally available as a process exit status. The
-largest safe direct value is `255`.
-
-Finally, `_main()` exits with:
+Then Program 1 exits:
 
 ```python
 sys.exit(hits)
 ```
 
-A parent process can read this exit code using `waitpid()` and
-`os.WEXITSTATUS(status)`.
+The parent receives this value through `waitpid()`:
 
-Manual shell example:
-
-```bash
-NUM=50 python3 src/task3.py 0.0 0.5
-echo $?
+```python
+wpid, status = os.waitpid(cpid, 0)
+hits = os.WEXITSTATUS(status)
 ```
 
-The second command prints the exit code of `task3.py`. Because random values are
-used, the result changes from run to run.
+Then the parent prints both the actual count and the expected count:
 
-### Process Status And Exit Code Notes
+```python
+expected = (b - a) * num
+```
 
-Process termination status in Unix-like systems is packed. A child does not only
-return a simple integer to the parent. The parent receives a status value that
-can describe several situations.
+For a uniform pseudo-random generator, each interval should receive roughly a
+proportional number of hits. For example, if `[0, 1]` is split into 4 equal
+parts and every child performs 100 trials, the expected value for each interval
+is about 25 hits.
 
-Normal exit:
+Important limitation: child-to-parent communication through exit code is very
+small. Exit codes can represent only values from `0` to `255`. Because of that,
+`prog1.py` clamps hit counts to `255`. If `num` is large, the printed result may
+show `255` even if the real number of hits was greater.
+
+### Process Status Helpers
+
+The project uses Unix wait-status helpers to understand child termination.
+
+Normal exit check:
 
 ```python
 os.WIFEXITED(status)
 ```
 
-If this is true, the child called `exit()`, returned from main, or used
-`sys.exit()` / `os._exit()` normally. The actual exit code is available through:
+Exit code extraction:
 
 ```python
 os.WEXITSTATUS(status)
 ```
 
-Signal termination:
+Signal termination check:
 
 ```python
 os.WIFSIGNALED(status)
 ```
 
-If this is true, the child was terminated by a signal. The signal number is
-available through:
+Signal number extraction:
 
 ```python
 os.WTERMSIG(status)
 ```
 
-Task 2 uses these helpers to print why every child was removed from memory.
-Task 1 returns the raw status from `waitpid()` and then demonstrates conversion
-with `os.waitstatus_to_exitcode()`.
+Task 2 uses these helpers to explain whether a child finished normally, returned
+an error code, or was killed by a signal. Task 3 uses them to collect numeric
+results from Program 1 children.
 
 ### Expected Usage Workflow
 
@@ -874,22 +787,28 @@ python3 src/task1.py "date"
 python3 src/task1.py "ls -la"
 ```
 
-2. Run the child-process management demonstration:
+2. Run the process lifecycle demonstration:
 
 ```bash
 python3 src/task2.py
 python3 src/task2.py 5
 ```
 
-3. Run the random interval worker:
+3. Run Program 1 directly:
 
 ```bash
-python3 src/task3.py 0.0 0.5
-NUM=100 python3 src/task3.py 0.25 0.75
+NUM=50 python3 src/prog1.py 0.0 0.5
 echo $?
 ```
 
-4. Run linting:
+4. Run Program 0, which creates Program 1 children:
+
+```bash
+python3 src/task3.py 4 100
+python3 src/task3.py 10 200
+```
+
+5. Run style checking:
 
 ```bash
 flake8 src
@@ -897,18 +816,20 @@ flake8 src
 
 ### Summary Of Program Logic
 
-Task 1 shows how a parent process can create a child, replace the child with a
-shell, run a command, and wait for the command to finish.
+Task 1 demonstrates how `fork()`, `execve()`, and `waitpid()` can be combined to
+run shell commands manually.
 
-Task 2 shows how a parent can create many children, allow some to exit
-naturally, detect which children are still running, terminate those children,
-and correctly reap every child process.
+Task 2 demonstrates the lifecycle of multiple child processes: creation,
+natural completion, non-blocking reaping, detection of still-running children,
+signal termination, and final cleanup.
 
-Task 3 shows how a child process can receive input through command-line
-arguments and environment variables, perform computation, and return a compact
-numeric result through its exit code.
+Task 3 demonstrates parent-child communication. `task3.py` sends interval bounds
+through command-line arguments and sends `NUM` through the environment.
+`prog1.py` performs work and returns a compact numeric result through its exit
+code. The parent decodes those exit codes and prints the observed distribution
+of generated pseudo-random numbers across the interval `[0, 1]`.
 
-Together, these programs demonstrate the central idea of Laboratory Work #4:
-processes in Linux have a lifecycle that can be controlled programmatically, and
-parent-child communication can be built from simple operating-system mechanisms
-such as arguments, environment variables, signals, and exit statuses.
+Together, these programs show the core idea of Laboratory Work #4: Linux
+processes can be created, transformed, controlled, waited for, and used for
+simple communication when the programmer understands process IDs, environments,
+signals, and wait statuses.
